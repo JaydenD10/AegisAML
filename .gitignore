@@ -8,6 +8,7 @@
 *.env
 !.env.example
 !backend/.env.example
+!frontend/.env.example
 *.pem
 *.key
 *.cert
@@ -55,6 +56,7 @@ wheels/
 .pytest_cache/
 .coverage
 htmlcov/
+.ruff_cache/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -69,13 +71,10 @@ Thumbs.db
 *.swp
 *.swo
 
-# Large Datasets and Processed ML Files
-data/*.csv
-*.csv
+# Large Datasets and Processed ML Files (>50MB excluded from Git)
 data/processed_transactions.csv
 data/test_predictions.csv
 data/transactions.csv
 *.parquet
 *.pkl
 *.h5
-

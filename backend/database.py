@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 def normalize_database_url(url: str) -> str:
     """Ensure PostgreSQL URL uses postgresql:// dialect required by SQLAlchemy."""

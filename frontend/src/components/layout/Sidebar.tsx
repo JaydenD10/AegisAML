@@ -76,12 +76,16 @@ export function Sidebar() {
 
       {/* Brand Header */}
       <div className="p-3 mb-2 flex items-center gap-3">
-        <Link href="/dashboard" className="flex items-center gap-3 group">
+        <Link
+          href="/login"
+          className="flex items-center gap-3 group cursor-pointer hover:opacity-90 hover:scale-[1.02] transition-all"
+          title="Return to Login / Analyst Access"
+        >
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-[0_4px_16px_rgba(37,99,235,0.35)] group-hover:scale-105 group-hover:shadow-[0_6px_22px_rgba(37,99,235,0.5)] transition-all">
             <ShieldCheck className="w-5 h-5 text-white" />
           </div>
           <div>
-            <div className="text-base font-extrabold tracking-tight text-slate-900 flex items-center gap-1.5 font-mono">
+            <div className="text-base font-extrabold tracking-tight text-slate-900 flex items-center gap-1.5 font-mono group-hover:text-blue-600 transition-colors">
               <span>Aegis</span>
               <span className="text-blue-600">AML</span>
             </div>

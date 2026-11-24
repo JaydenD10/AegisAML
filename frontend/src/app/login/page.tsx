@@ -7,15 +7,15 @@ import {
   ShieldCheck,
   ArrowRight,
   Loader2,
-  Sparkles,
   Lock,
   Mail,
+  Zap,
   Eye,
-  EyeOff,
-  CheckCircle2,
+  Sparkles,
+  ActivitySquare,
+  Network
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { Auth3DScene } from '@/components/auth/Auth3DScene'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,7 +23,6 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -53,8 +52,6 @@ export default function LoginPage() {
   const handleQuickDemoAccess = async () => {
     setError('')
     setLoading(true)
-    setEmail('analyst@aegisaml.corp')
-    setPassword('password123')
     try {
       const res = await login('analyst@aegisaml.corp', 'password123')
       if (res && !res.success) {
@@ -70,148 +67,177 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-hidden">
-      {/* Container holding 3D Animation on Left + Liquid Glass Card on Right */}
-      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 selection:bg-blue-500/20 selection:text-blue-900 relative">
+      {/* Background radial atmosphere */}
+      <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-[15%] left-[20%] w-[400px] h-[400px] rounded-full bg-blue-200/25 blur-[90px]" />
+        <div className="absolute bottom-[15%] right-[20%] w-[450px] h-[450px] rounded-full bg-purple-200/20 blur-[100px]" />
+      </div>
+
+      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         
-        {/* Left Column: 3D Interactive AML Forensic Scene */}
-        <div className="lg:col-span-7 flex flex-col justify-center items-center lg:items-start text-center lg:text-left space-y-4">
-          <div className="hidden lg:block space-y-2 mb-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-700 border border-blue-500/20 text-xs font-extrabold uppercase tracking-wider backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Next-Gen AML Risk Surveillance</span>
+        {/* Left Column: Platform Highlights */}
+        <div className="lg:col-span-6 space-y-6 hidden lg:block pr-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-[0_8px_20px_rgba(37,99,235,0.35)]">
+              <ShieldCheck className="w-7 h-7" />
             </div>
-            <h2 className="text-3xl xl:text-4xl font-black text-slate-900 tracking-tight">
-              AI-Powered Financial Crime Defense
+            <div>
+              <div className="text-2xl font-black tracking-tight text-slate-900 font-mono">
+                Aegis<span className="text-blue-600">AML</span>
+              </div>
+              <div className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                Risk Intelligence Platform
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
+              Enterprise Anti-Money Laundering Surveillance
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-lg leading-relaxed">
-              Real-time transaction surveillance, multi-detector behavioral drift metrics, SHAP TreeExplainer forensics, and bounded 2-hop topological clustering.
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Auditing 10,000 monitored entities and 1.32M transactions using multi-detector behavioral drift, 
+              graph topological clustering, and TreeExplainer SHAP feature forensics.
             </p>
           </div>
 
-          {/* Interactive 3D Parallax Canvas */}
-          <div className="w-full">
-            <Auth3DScene />
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="liquid-glass-badge p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-blue-700 text-[11px] font-bold">
+                <Eye className="w-3.5 h-3.5" />
+                <span>SURVEILLANCE</span>
+              </div>
+              <div className="text-[10px] text-slate-500">Continuous 24/7 transaction monitor</div>
+            </div>
+            <div className="liquid-glass-badge p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-purple-700 text-[11px] font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>SHAP FORENSICS</span>
+              </div>
+              <div className="text-[10px] text-slate-500">TreeExplainer risk attribution</div>
+            </div>
+            <div className="liquid-glass-badge p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-indigo-700 text-[11px] font-bold">
+                <Network className="w-3.5 h-3.5" />
+                <span>TOPOLOGY</span>
+              </div>
+              <div className="text-[10px] text-slate-500">2-hop subgraph cluster analysis</div>
+            </div>
+            <div className="liquid-glass-badge p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-cyan-800 text-[11px] font-bold">
+                <ActivitySquare className="w-3.5 h-3.5" />
+                <span>DRIFT MONITOR</span>
+              </div>
+              <div className="text-[10px] text-slate-500">Multi-detector behavioral shift</div>
+            </div>
           </div>
         </div>
 
-        {/* Right Column: 3D Liquid Glass Login Form */}
-        <div className="lg:col-span-5 w-full max-w-md mx-auto">
-          <div className="glass-panel-3d p-8 sm:p-10 space-y-6 shadow-[0_25px_60px_-15px_rgba(15,23,42,0.14)] page-fade-in relative">
+        {/* Right Column: Sign In Card */}
+        <div className="lg:col-span-6 w-full max-w-md mx-auto">
+          <div className="liquid-glass-panel p-8 shadow-2xl space-y-6">
             
-            {/* Header / Brand */}
             <div className="text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-[0_6px_24px_rgba(37,99,235,0.4)]">
-                <ShieldCheck className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center mx-auto shadow-[0_8px_20px_rgba(37,99,235,0.35)]">
+                <ShieldCheck className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-900 font-mono">
-                  Aegis<span className="text-blue-600">AML</span>
-                </h1>
-                <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest mt-0.5">
-                  Sign In to Workspace
-                </p>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight font-mono">
+                Aegis<span className="text-blue-600">AML</span>
+              </h1>
+              <div className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400">
+                ANALYST WORKSPACE SIGN IN
               </div>
             </div>
 
-            {/* Quick Demo Analyst Access CTA */}
-            <button
-              type="button"
-              onClick={handleQuickDemoAccess}
-              disabled={loading}
-              className="w-full py-3 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-[0_4px_20px_rgba(37,99,235,0.35)] hover:shadow-[0_6px_25px_rgba(37,99,235,0.5)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
-            >
-              <Sparkles className="w-4 h-4 text-cyan-200" />
-              <span>Quick Access Demo Analyst</span>
-              <ArrowRight className="w-4 h-4 text-cyan-200" />
-            </button>
-
-            <div className="relative flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200/80" />
-              </div>
-              <span className="relative px-3 bg-white/80 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 rounded-full">
-                Or Sign In With Email
-              </span>
-            </div>
-
-            {/* Error Alert */}
             {error && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center page-fade-in">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-700 text-xs font-semibold">
                 {error}
               </div>
             )}
 
-            {/* Form */}
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
-                  Analyst Email
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block">
+                  ANALYST EMAIL
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="analyst@aegisaml.corp"
-                    disabled={loading}
-                    className="w-full h-11 pl-10 pr-4 rounded-xl text-xs sm:text-sm font-medium bg-white/90 border border-slate-200/80 text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/90 border border-slate-200/90 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
-                  Password
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block">
+                  PASSWORD
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
-                    disabled={loading}
-                    className="w-full h-11 pl-10 pr-10 rounded-xl text-xs sm:text-sm font-medium bg-white/90 border border-slate-200/80 text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/90 border border-slate-200/90 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-glass-primary w-full h-11 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs tracking-wider uppercase transition-all shadow-[0_8px_25px_rgba(37,99,235,0.35)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
-                    <span>Sign In to Workspace</span>
+                    <span>SIGN IN TO WORKSPACE</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
             </form>
 
-            {/* Signup Navigation Link */}
-            <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-200/60">
-              <span>Need a new workspace partition? </span>
-              <Link href="/signup" className="font-bold text-blue-600 hover:underline">
-                Register Analyst Account
+            <div className="relative py-1">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200/80" />
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400">
+                <span className="bg-white/90 px-2 rounded">OR INSTANT ACCESS</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleQuickDemoAccess}
+              disabled={loading}
+              type="button"
+              className="w-full py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100/80 border border-blue-200/80 text-blue-700 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <Zap className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
+              <span>Access as Demo Analyst (10K Accounts)</span>
+            </button>
+
+            <div className="text-center pt-2">
+              <Link
+                href="/"
+                className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                Need an isolated partition? <span className="text-blue-600 font-bold hover:underline">Register Workspace</span>
               </Link>
             </div>
+
           </div>
         </div>
+
       </div>
     </div>
   )

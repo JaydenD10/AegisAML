@@ -56,8 +56,23 @@ def test_full_pipeline_and_auth():
     r = requests.post(f"{BASE_URL}/api/upload/pipeline", headers=headers_a, files=files, data=data)
     assert r.status_code == 200, f"Pipeline upload failed: {r.text}"
     upload_res = r.json()
-    print("Pipeline Execution Result:", json.dumps(upload_res, indent=2))
-    assert upload_res["transactions_imported"] > 0, "No transactions imported"
+    print("Pipeline Execution Started:", json.dumps(upload_res, indent=2))
+    
+    if "job_id" in upload_res:
+        job_id = upload_res["job_id"]
+        for _ in range(30):
+            status_r = requests.get(f"{BASE_URL}/api/upload/status/{job_id}", headers=headers_a)
+            assert status_r.status_code == 200
+            status_data = status_r.json()
+            print(f"Polling job {job_id}: {status_data['progress']}% - {status_data['stage']}")
+            if status_data["status"] == "success":
+                upload_res = status_data["summary"]
+                break
+            elif status_data["status"] == "failed":
+                raise Exception(f"Pipeline job failed: {status_data.get('error')}")
+            time.sleep(0.3)
+
+    assert upload_res and upload_res.get("transactions_imported", 0) > 0, "No transactions imported"
 
     print("\n=== 6. Testing Dashboard Stats for User A After Upload ===")
     r = requests.get(f"{BASE_URL}/api/dashboard/stats", headers=headers_a)

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -15,9 +15,22 @@ import {
   Database,
   Sparkles,
   Layers,
+  RotateCcw,
+  Activity,
+  Check
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useAuth } from '@/lib/auth'
+
+interface PipelineJobStatus {
+  job_id: string
+  status: 'processing' | 'success' | 'failed'
+  progress: number
+  stage: string
+  details?: Record<string, any>
+  summary?: Record<string, any>
+  error?: string
+}
 
 export default function UploadPage() {
   const router = useRouter()
@@ -29,8 +42,10 @@ export default function UploadPage() {
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
-  const [result, setResult] = useState<any>(null)
-  const [currentStep, setCurrentStep] = useState<string>('')
+  const [jobStatus, setJobStatus] = useState<PipelineJobStatus | null>(null)
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
+
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -64,9 +79,42 @@ export default function UploadPage() {
       return
     }
     setError('')
-    setResult(null)
+    setJobStatus(null)
+    setActiveJobId(null)
     setFile(selectedFile)
   }
+
+  // Poll background job status
+  useEffect(() => {
+    if (!activeJobId) return
+
+    const pollStatus = async () => {
+      try {
+        const res = await authFetch(`/api/upload/status/${activeJobId}`)
+        if (!res.ok) return
+        const data: PipelineJobStatus = await res.json()
+        setJobStatus(data)
+
+        if (data.status === 'success') {
+          setUploading(false)
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+        } else if (data.status === 'failed') {
+          setUploading(false)
+          setError(data.error || 'Pipeline execution failed.')
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+        }
+      } catch (err: any) {
+        console.error('Failed to poll job status:', err)
+      }
+    }
+
+    pollStatus()
+    pollIntervalRef.current = setInterval(pollStatus, 500)
+
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+    }
+  }, [activeJobId, authFetch])
 
   const handleExecutePipeline = async () => {
     if (!file) {
@@ -76,16 +124,17 @@ export default function UploadPage() {
 
     setUploading(true)
     setError('')
-    setResult(null)
-    setCurrentStep('Parsing CSV & Validating Schema...')
+    setJobStatus({
+      job_id: '',
+      status: 'processing',
+      progress: 5,
+      stage: 'Uploading CSV & Initializing Ingestion...'
+    })
 
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('dataset_type', datasetType)
-
-      setTimeout(() => setCurrentStep('Executing Feature Engineering & ML Pipeline...'), 600)
-      setTimeout(() => setCurrentStep('Computing Behavioral Drift & Graph Topology...'), 1200)
 
       const res = await authFetch('/api/upload/pipeline', {
         method: 'POST',
@@ -94,21 +143,50 @@ export default function UploadPage() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.detail || 'Upload pipeline execution failed.')
+        throw new Error(errData.detail || 'Upload pipeline initialization failed.')
       }
 
       const data = await res.json()
-      setResult(data)
-      setCurrentStep('Completed successfully!')
+      if (data.job_id) {
+        setActiveJobId(data.job_id)
+      } else if (data.status === 'success') {
+        // Direct synchronous response fallback
+        setJobStatus({
+          job_id: 'sync_done',
+          status: 'success',
+          progress: 100,
+          stage: 'Pipeline Processing Complete',
+          summary: data
+        })
+        setUploading(false)
+      }
     } catch (err: any) {
-      setError(err.message || 'Error executing upload pipeline.')
-    } finally {
+      setError(err.message || 'Error initiating upload pipeline.')
       setUploading(false)
+      setJobStatus(null)
     }
   }
 
+  const handleRetry = () => {
+    setError('')
+    setJobStatus(null)
+    setActiveJobId(null)
+    setUploading(false)
+  }
+
+  const stagesList = [
+    { label: 'CSV Upload & Schema Validation', threshold: 15 },
+    { label: 'Entity Mapping & Accounts Topology', threshold: 30 },
+    { label: 'Feature Engineering & Network Topologies', threshold: 50 },
+    { label: 'Behavioral Drift Scoring (Page-Hinkley, CUSUM, Z-Score)', threshold: 68 },
+    { label: 'ML Risk Inference & TreeExplainer SHAP', threshold: 85 },
+    { label: 'Database Persistence & Finalization', threshold: 95 },
+  ]
+
+  const currentProgress = jobStatus?.progress || (uploading ? 5 : 0)
+
   return (
-    <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-12">
       <PageHeader
         title="Multi-Tenant Data Ingestion Pipeline"
         subtitle="Ingest transaction and KYC data into your isolated PostgreSQL workspace with automated ML feature engineering, drift calculation, and SHAP explainability."
@@ -116,6 +194,7 @@ export default function UploadPage() {
 
       {/* Main 3D Liquid Glass Dropzone Card */}
       <div className="glass-panel-3d p-6 sm:p-8 space-y-6">
+        
         {/* Step 1: Select Type */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200/60">
           <div>
@@ -154,7 +233,7 @@ export default function UploadPage() {
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => !uploading && fileInputRef.current?.click()}
           className={`rounded-3xl p-8 sm:p-12 border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center relative overflow-hidden ${
             dragActive
               ? 'border-blue-500 bg-blue-50/50 scale-[1.01] dropzone-glow'
@@ -168,6 +247,7 @@ export default function UploadPage() {
             type="file"
             accept=".csv"
             onChange={handleFileChange}
+            disabled={uploading}
             className="hidden"
           />
 
@@ -182,9 +262,11 @@ export default function UploadPage() {
                   {(file.size / 1024).toFixed(1)} KB · Ready to ingest into workspace
                 </div>
               </div>
-              <span className="text-[11px] font-bold text-blue-600 hover:underline">
-                Click or drop another file to replace
-              </span>
+              {!uploading && (
+                <span className="text-[11px] font-bold text-blue-600 hover:underline">
+                  Click or drop another file to replace
+                </span>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -203,97 +285,185 @@ export default function UploadPage() {
           )}
         </div>
 
-        {/* Action Button & Status */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <div className="text-xs text-slate-500">
-            {uploading ? (
-              <div className="flex items-center gap-2 text-blue-600 font-bold">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{currentStep}</span>
+        {/* Progressive Pipeline Execution Status */}
+        {uploading && (
+          <div className="p-6 rounded-3xl bg-blue-50/60 border border-blue-200/80 space-y-4 page-fade-in">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                <span className="text-sm font-black text-slate-900">
+                  {jobStatus?.stage || 'Processing Pipeline...'}
+                </span>
               </div>
-            ) : file ? (
-              <div className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Ready to run ML pipeline on {file.name}</span>
-              </div>
-            ) : (
-              <span>Select or drop a CSV file to execute the ingestion pipeline</span>
-            )}
+              <span className="font-mono text-xs font-black text-blue-700 bg-blue-100/90 px-2.5 py-1 rounded-full">
+                {currentProgress}%
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${currentProgress}%` }}
+              />
+            </div>
+
+            {/* Progressive Stage Stepper */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+              {stagesList.map((stg, idx) => {
+                const isDone = currentProgress >= stg.threshold
+                const isCurrent = currentProgress < stg.threshold && (idx === 0 || currentProgress >= stagesList[idx - 1].threshold)
+                return (
+                  <div
+                    key={stg.label}
+                    className={`flex items-center gap-2 text-xs p-2 rounded-xl transition-colors ${
+                      isDone
+                        ? 'text-emerald-700 bg-emerald-50/80 font-bold'
+                        : isCurrent
+                        ? 'text-blue-700 bg-white shadow-sm font-extrabold animate-pulse'
+                        : 'text-slate-400 font-medium'
+                    }`}
+                  >
+                    {isDone ? (
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[2.5]" />
+                    ) : isCurrent ? (
+                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span className="truncate">{stg.label}</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
+        )}
 
-          <button
-            type="button"
-            onClick={handleExecutePipeline}
-            disabled={!file || uploading}
-            className="btn-glass-primary px-7 py-3 text-xs w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Processing Pipeline...</span>
-              </>
-            ) : (
-              <>
-                <span>Run Ingestion Pipeline</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </div>
+        {/* Action Button & Status */}
+        {!uploading && !jobStatus?.summary && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+            <div className="text-xs text-slate-500">
+              {file ? (
+                <div className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Ready to run ML pipeline on {file.name}</span>
+                </div>
+              ) : (
+                <span>Select or drop a CSV file to execute the ingestion pipeline</span>
+              )}
+            </div>
 
-        {/* Error Alert */}
+            <button
+              type="button"
+              onClick={handleExecutePipeline}
+              disabled={!file || uploading}
+              className="btn-glass-primary px-7 py-3 text-xs w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <span>Run Ingestion Pipeline</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Error Alert with Retry */}
         {error && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-            <span>{error}</span>
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3 page-fade-in">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={handleRetry}
+              type="button"
+              className="px-3.5 py-1.5 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-500 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Retry Processing</span>
+            </button>
           </div>
         )}
 
         {/* Ingestion Results Card */}
-        {result && (
-          <div className="p-6 rounded-3xl bg-emerald-50/70 border border-emerald-200 space-y-4 shadow-sm page-fade-in">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 text-emerald-800 font-extrabold text-sm">
+        {jobStatus?.status === 'success' && jobStatus?.summary && (
+          <div className="p-6 sm:p-7 rounded-3xl bg-emerald-50/70 border border-emerald-200 space-y-5 shadow-sm page-fade-in">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2.5 text-emerald-800 font-black text-sm">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                <span>Pipeline Execution Successful</span>
+                <span>Dataset processed successfully</span>
               </div>
               <Link
                 href="/dashboard"
-                className="btn-glass-primary px-4 py-1.5 text-xs flex items-center gap-1.5"
+                className="btn-glass-primary px-5 py-2 text-xs flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
               >
-                <span>Go to Dashboard</span>
+                <span>View Dashboard</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="p-3 rounded-2xl bg-white/80 border border-emerald-200/80 text-center">
-                <div className="text-[10px] font-bold uppercase text-slate-400">Transactions</div>
-                <div className="text-lg font-black font-mono text-slate-900 mt-0.5">
-                  {result.transactions_imported || 0}
+              <div className="p-3.5 rounded-2xl bg-white/90 border border-emerald-200/80 text-center shadow-xs">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">Transactions Ingested</div>
+                <div className="text-xl font-black font-mono text-slate-900 mt-1">
+                  {(jobStatus.summary.transactions_imported || 0).toLocaleString()}
                 </div>
               </div>
-              <div className="p-3 rounded-2xl bg-white/80 border border-emerald-200/80 text-center">
-                <div className="text-[10px] font-bold uppercase text-slate-400">Accounts Created</div>
-                <div className="text-lg font-black font-mono text-slate-900 mt-0.5">
-                  {result.accounts_imported || 0}
+              <div className="p-3.5 rounded-2xl bg-white/90 border border-emerald-200/80 text-center shadow-xs">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">Accounts Monitored</div>
+                <div className="text-xl font-black font-mono text-slate-900 mt-1">
+                  {(jobStatus.summary.accounts_imported || 0).toLocaleString()}
                 </div>
               </div>
-              <div className="p-3 rounded-2xl bg-white/80 border border-emerald-200/80 text-center">
-                <div className="text-[10px] font-bold uppercase text-slate-400">Alerts Flagged</div>
-                <div className="text-lg font-black font-mono text-rose-600 mt-0.5">
-                  {result.alerts_generated || 0}
+              <div className="p-3.5 rounded-2xl bg-white/90 border border-emerald-200/80 text-center shadow-xs">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">Alerts Flagged</div>
+                <div className="text-xl font-black font-mono text-rose-600 mt-1">
+                  {(jobStatus.summary.alerts_generated || 0).toLocaleString()}
                 </div>
               </div>
-              <div className="p-3 rounded-2xl bg-white/80 border border-emerald-200/80 text-center">
-                <div className="text-[10px] font-bold uppercase text-slate-400">SHAP Explanations</div>
-                <div className="text-lg font-black font-mono text-blue-600 mt-0.5">
-                  {result.explanations_generated || 0}
+              <div className="p-3.5 rounded-2xl bg-white/90 border border-emerald-200/80 text-center shadow-xs">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">SHAP Forensics</div>
+                <div className="text-xl font-black font-mono text-blue-600 mt-1">
+                  {(jobStatus.summary.explanations_generated || 0).toLocaleString()}
                 </div>
               </div>
             </div>
+
+            {/* Risk Distribution Breakdown */}
+            {jobStatus.summary.risk_distribution && (
+              <div className="p-4 rounded-2xl bg-white/80 border border-emerald-200/70 space-y-2">
+                <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
+                  Model Ensemble Risk Distribution
+                </div>
+                <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                  <div className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold">
+                    <div>Critical</div>
+                    <div className="text-sm font-black font-mono mt-0.5">
+                      {jobStatus.summary.risk_distribution.CRITICAL?.toLocaleString() || 0}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 font-bold">
+                    <div>High</div>
+                    <div className="text-sm font-black font-mono mt-0.5">
+                      {jobStatus.summary.risk_distribution.HIGH?.toLocaleString() || 0}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 font-bold">
+                    <div>Medium</div>
+                    <div className="text-sm font-black font-mono mt-0.5">
+                      {jobStatus.summary.risk_distribution.MEDIUM?.toLocaleString() || 0}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold">
+                    <div>Low</div>
+                    <div className="text-sm font-black font-mono mt-0.5">
+                      {jobStatus.summary.risk_distribution.LOW?.toLocaleString() || 0}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
+
       </div>
 
       {/* Schema Reference Panel */}
